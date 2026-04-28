@@ -1,93 +1,96 @@
 document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('date').valueAsDate = new Date();
-    loadLogs();
-    
-    document.getElementById('logForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        addLog();
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0];
+    document.getElementById('selDate').value = dateStr;
+    currentDateKey = dateStr;
+    loadTasks();
+
+    window.addTask = async function() {
+        const val = document.getElementById('taskInput').value.trim();
+        if (!val) return;
+        
+        const data = {
+            date: currentDateKey,
+            content: val
+        };
+        
+        const response = await fetch('/api/tasks', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            document.getElementById('taskInput').value = '';
+            loadTasks();
+        }
+    };
+
+    window.toggleDone = async function(taskId, done) {
+        await fetch(`/api/tasks/${taskId}`, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({done: done})
+        });
+        loadTasks();
+    };
+
+    window.deleteTask = async function(taskId) {
+        if (!confirm('确定要删除这条计划吗？')) return;
+        
+        const response = await fetch(`/api/tasks/${taskId}`, {method: 'DELETE'});
+        if (response.ok) {
+            loadTasks();
+        }
+    };
+
+    window.loadTasks = async function() {
+        const response = await fetch(`/api/tasks?date=${currentDateKey}`);
+        const tasks = await response.json();
+        
+        const listDiv = document.getElementById('taskList');
+        if (tasks.length === 0) {
+            listDiv.innerHTML = '<p style="color:#666;">当日暂无计划</p>';
+            document.getElementById('countInfo').innerHTML = '';
+            return;
+        }
+        
+        const total = tasks.length;
+        const done = tasks.filter(t => t.done).length;
+        const rate = total ? Math.floor(done / total * 100) : 0;
+        
+        listDiv.innerHTML = tasks.map(task => `
+            <div class="item ${task.done ? 'done' : ''}">
+                <input type="checkbox" ${task.done ? 'checked' : ''} onchange="toggleDone(${task.id}, this.checked)">
+                <span style="flex:1;">${task.content}</span>
+                <button class="del" onclick="deleteTask(${task.id})">删除</button>
+            </div>
+        `).join('');
+        
+        document.getElementById('countInfo').innerHTML = 
+            `当日总计：${total} 项   已完成：${done} 项   完成率：${rate}%`;
+    };
+
+    window.makeWeekReport = async function() {
+        const response = await fetch('/api/report?type=week');
+        const data = await response.json();
+        document.getElementById('reportBox').innerText = data.report;
+        navigator.clipboard.writeText(data.report).then(() => {
+            alert('周报已生成并复制到剪贴板！');
+        });
+    };
+
+    window.makeMonthReport = async function() {
+        const response = await fetch('/api/report?type=month');
+        const data = await response.json();
+        document.getElementById('reportBox').innerText = data.report;
+        navigator.clipboard.writeText(data.report).then(() => {
+            alert('月报已生成并复制到剪贴板！');
+        });
+    };
+
+    document.getElementById('selDate').addEventListener('change', function() {
+        currentDateKey = this.value;
+        loadTasks();
     });
 });
-
-async function addLog() {
-    const data = {
-        date: document.getElementById('date').value,
-        project: document.getElementById('project').value,
-        content: document.getElementById('content').value,
-        duration: parseFloat(document.getElementById('duration').value)
-    };
-    
-    const response = await fetch('/api/logs', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(data)
-    });
-    
-    if (response.ok) {
-        alert('记录添加成功！');
-        document.getElementById('logForm').reset();
-        document.getElementById('date').valueAsDate = new Date();
-        loadLogs();
-    }
-}
-
-async function loadLogs() {
-    const start = document.getElementById('filterStart').value;
-    const end = document.getElementById('filterEnd').value;
-    
-    let url = '/api/logs';
-    const params = [];
-    if (start) params.push(`start_date=${start}`);
-    if (end) params.push(`end_date=${end}`);
-    if (params.length) url += '?' + params.join('&');
-    
-    const response = await fetch(url);
-    const logs = await response.json();
-    
-    const listDiv = document.getElementById('logsList');
-    if (logs.length === 0) {
-        listDiv.innerHTML = '<p>暂无记录</p>';
-        return;
-    }
-    
-    listDiv.innerHTML = logs.map(log => `
-        <div class="log-item">
-            <h3>${log.date} - ${log.project}</h3>
-            <p><strong>耗时:</strong> ${log.duration} 小时</p>
-            <p><strong>内容:</strong> ${log.content}</p>
-            <button class="delete-btn" onclick="deleteLog(${log.id})">删除</button>
-        </div>
-    `).join('');
-}
-
-async function deleteLog(id) {
-    if (!confirm('确定要删除这条记录吗？')) return;
-    
-    const response = await fetch(`/api/logs/${id}`, {method: 'DELETE'});
-    if (response.ok) {
-        alert('删除成功！');
-        loadLogs();
-    }
-}
-
-async function generateReport(type) {
-    const start = document.getElementById('filterStart').value;
-    const end = document.getElementById('filterEnd').value;
-    
-    let url = `/api/report?type=${type}`;
-    if (start) url += `&start_date=${start}`;
-    if (end) url += `&end_date=${end}`;
-    
-    const response = await fetch(url);
-    const data = await response.json();
-    
-    document.getElementById('reportContent').textContent = data.report;
-    document.getElementById('reportSection').style.display = 'block';
-    document.getElementById('reportSection').scrollIntoView({behavior: 'smooth'});
-}
-
-function copyReport() {
-    const report = document.getElementById('reportContent').textContent;
-    navigator.clipboard.writeText(report).then(() => {
-        alert('报告已复制到剪贴板！');
-    });
-}
