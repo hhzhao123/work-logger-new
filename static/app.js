@@ -166,13 +166,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('statusFilter').addEventListener('change', function() {
         const status = this.value;
         const dateInput = document.getElementById('selDate');
-        const hint = document.getElementById('dateHint');
         
         if (status === 'false') {
-            hint.textContent = '（清除日期可查看所有未完成）';
+            // 未完成，可以清除，不控制日期
         } else {
-            hint.textContent = '';
-            // 全部或已完成时，确保日期不为空
+            // 全部或已完成，确保日期不为空
             if (!dateInput.value) {
                 dateInput.value = todayStr;
                 currentDateKey = todayStr;
@@ -197,8 +195,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // 监听输入事件，处理清除后的显示
     document.getElementById('selDate').addEventListener('input', function() {
         const status = document.getElementById('statusFilter').value;
+        // 控制占位符显示
+        document.getElementById('datePlaceholder').style.display = this.value ? 'none' : 'block';
+        
         if (status === 'false' && !this.value) {
             document.getElementById('taskList').innerHTML = '<p style="color:#666;">已清除日期，显示所有未完成任务</p>';
         }
     });
+    
+    // 初始化占位符显示
+    document.getElementById('datePlaceholder').style.display = document.getElementById('selDate').value ? 'none' : 'block';
 });
