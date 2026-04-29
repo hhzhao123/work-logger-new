@@ -1,5 +1,6 @@
 ﻿// 全局变量
 let currentDateKey = '';
+let todayStr = '';
 
 // 添加任务
 async function addTask() {
@@ -53,9 +54,27 @@ async function deleteTask(taskId) {
 // 加载任务列表
 async function loadTasks() {
     const status = document.getElementById('statusFilter').value;
-    let url = '/api/tasks?date=' + currentDateKey;
+    const date = document.getElementById('selDate').value;
+    
+    // 全部或已完成时，日期必填
+    if ((status === 'all' || status === 'true') && !date) {
+        document.getElementById('taskList').innerHTML = '<p style="color:#666;">请选择日期</p>';
+        document.getElementById('countInfo').innerHTML = '';
+        return;
+    }
+    
+    let url = '/api/tasks';
+    const params = [];
+    
+    if (date) {
+        params.push('date=' + date);
+    }
     if (status !== 'all') {
-        url += '&done=' + status;
+        params.push('done=' + status);
+    }
+    
+    if (params.length > 0) {
+        url += '?' + params.join('&');
     }
     
     const response = await fetch(url);
@@ -63,14 +82,14 @@ async function loadTasks() {
     
     const listDiv = document.getElementById('taskList');
     if (tasks.length === 0) {
-        listDiv.innerHTML = '<p style="color:#666;">当日暂无计划</p>';
+        listDiv.innerHTML = '<p style="color:#666;">暂无任务</p>';
         document.getElementById('countInfo').innerHTML = '';
         return;
     }
     
     const total = tasks.length;
-    const done = tasks.filter(t => t.done).length;
-    const rate = total ? Math.floor(done / total * 100) : 0;
+    const doneCount = tasks.filter(t => t.done).length;
+    const rate = total ? Math.floor(doneCount / total * 100) : 0;
     
     listDiv.innerHTML = tasks.map(task => `
         <div class="item ${task.done ? 'done' : ''}">
@@ -87,7 +106,7 @@ async function loadTasks() {
     `).join('');
     
     document.getElementById('countInfo').innerHTML = 
-        `当日总计：${total} 项   已完成：${done} 项   完成率：${rate}%`;
+        `总计：${total} 项   已完成：${doneCount} 项   完成率：${rate}%`;
 }
 
 // 生成报告
@@ -113,8 +132,6 @@ function setWeekRange() {
     const today = new Date();
     const monday = new Date(today);
     monday.setDate(today.getDate() - today.getDay() + 1);
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
     
     document.getElementById('startDate').value = monday.toISOString().split('T')[0];
     document.getElementById('endDate').value = today.toISOString().split('T')[0];
@@ -132,13 +149,13 @@ function setMonthRange() {
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
     const today = new Date();
-    const dateStr = today.toISOString().split('T')[0];
-    document.getElementById('selDate').value = dateStr;
-    currentDateKey = dateStr;
+    todayStr = today.toISOString().split('T')[0];
+    document.getElementById('selDate').value = todayStr;
+    currentDateKey = todayStr;
     
     // 报告日期默认今日
-    document.getElementById('startDate').value = dateStr;
-    document.getElementById('endDate').value = dateStr;
+    document.getElementById('startDate').value = todayStr;
+    document.getElementById('endDate').value = todayStr;
     
     loadTasks();
 
@@ -146,11 +163,27 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('addBtn').addEventListener('click', addTask);
 
     // 状态筛选事件
-    document.getElementById('statusFilter').addEventListener('change', loadTasks);
+    document.getElementById('statusFilter').addEventListener('change', function() {
+        const status = this.value;
+        const dateInput = document.getElementById('selDate');
+        // 全部或已完成时，确保日期不为空
+        if ((status === 'all' || status === 'true') && !dateInput.value) {
+            dateInput.value = todayStr;
+            currentDateKey = todayStr;
+        }
+        loadTasks();
+    });
 
-    // 日期切换事件
+    // 日期切换事件（监听清除按钮）
     document.getElementById('selDate').addEventListener('change', function() {
-        currentDateKey = this.value;
+        const status = document.getElementById('statusFilter').value;
+        // 全部或已完成时，不允许清空日期
+        if ((status === 'all' || status === 'true') && !this.value) {
+            this.value = todayStr;
+            currentDateKey = todayStr;
+        } else {
+            currentDateKey = this.value;
+        }
         loadTasks();
     });
 });
