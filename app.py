@@ -26,10 +26,43 @@ class Task(db.Model):
 with app.app_context():
     db.create_all()
     
-    # 检查并添加缺失的列
+    # 检查并修复数据库结构
     inspector = inspect(db.engine)
     tables = inspector.get_table_names()
     if 'task' in tables:
+        columns = [col['name'] for col in inspector.get_columns('task')]
+        
+        # 如果还有旧的 date 字段，重建表
+        if 'date' in columns:
+            print('检测到旧的 date 字段，正在重建表...')
+            # SQLite 不支持 DROP COLUMN，需要重建表
+            with db.engine.connect() as conn:
+                # 创建新表
+                conn.execute(text('''
+                    CREATE TABLE task_new (
+                        id INTEGER NOT NULL PRIMARY KEY,
+                        content TEXT NOT NULL,
+                        done BOOLEAN DEFAULT 0,
+                        created_at DATETIME,
+                        completed_at DATETIME
+                    )
+                '''))
+                # 复制数据
+                conn.execute(text('''
+                    INSERT INTO task_new (id, content, done, created_at, completed_at)
+                    SELECT id, content, done, 
+                           CASE WHEN date IS NOT NULL THEN date ELSE NULL END, 
+                           completed_at
+                    FROM task
+                '''))
+                # 删除旧表
+                conn.execute(text('DROP TABLE task'))
+                # 重命名新表
+                conn.execute(text('ALTER TABLE task_new RENAME TO task'))
+                conn.commit()
+            print('表重建完成')
+        
+        # 添加缺失的列
         columns = [col['name'] for col in inspector.get_columns('task')]
         if 'completed_at' not in columns:
             with db.engine.connect() as conn:
