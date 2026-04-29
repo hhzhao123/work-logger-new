@@ -166,10 +166,17 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('statusFilter').addEventListener('change', function() {
         const status = this.value;
         const dateInput = document.getElementById('selDate');
-        // 全部或已完成时，确保日期不为空
-        if ((status === 'all' || status === 'true') && !dateInput.value) {
-            dateInput.value = todayStr;
-            currentDateKey = todayStr;
+        const hint = document.getElementById('dateHint');
+        
+        if (status === 'false') {
+            hint.textContent = '（清除日期可查看所有未完成）';
+        } else {
+            hint.textContent = '';
+            // 全部或已完成时，确保日期不为空
+            if (!dateInput.value) {
+                dateInput.value = todayStr;
+                currentDateKey = todayStr;
+            }
         }
         loadTasks();
     });
@@ -185,5 +192,13 @@ document.addEventListener('DOMContentLoaded', function() {
             currentDateKey = this.value;
         }
         loadTasks();
+    });
+    
+    // 监听输入事件，处理清除后的显示
+    document.getElementById('selDate').addEventListener('input', function() {
+        const status = document.getElementById('statusFilter').value;
+        if (status === 'false' && !this.value) {
+            document.getElementById('taskList').innerHTML = '<p style="color:#666;">已清除日期，显示所有未完成任务</p>';
+        }
     });
 });

@@ -29,6 +29,14 @@
         .top-right a { color: #2563eb; text-decoration: none; }
         .top-right a:hover { color: #1d4ed8; }
         .button-group { display: flex; gap: 10px; margin-bottom: 15px; }
+        
+        /* 隐藏日期输入框的默认占位符 */
+        input[type="date"]:invalid::-webkit-datetime-edit {
+            color: transparent !important;
+        }
+        input[type="date"]{
+            color: #333; /* 选中后正常显示 */
+        } 
     </style>
 </head>
 <body>
@@ -53,6 +61,7 @@
                         <option value="true">已完成</option>
                     </select>
                     <input type="date" id="selDate" style="margin-left: 10px;">
+                    <span id="dateHint" style="margin-left: 5px; font-size: 12px; color: #666;"></span>
                 </div>
                 <div class="add-box">
                     <input type="text" id="taskInput" placeholder="输入计划任务...">
