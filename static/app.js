@@ -8,7 +8,6 @@ async function addTask() {
     if (!val) return;
     
     const data = {
-        date: currentDateKey,
         content: val
     };
     
@@ -21,6 +20,8 @@ async function addTask() {
         
         if (response.ok) {
             document.getElementById('taskInput').value = '';
+            // 添加成功后，自动切换到今天（因为任务添加时间是今天）
+            document.getElementById('selDate').value = todayStr;
             loadTasks();
         } else {
             const error = await response.text();
@@ -168,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const dateInput = document.getElementById('selDate');
         
         if (status === 'false') {
-            // 未完成，可以清除，不控制日期
+            // 未完成，可以清除
         } else {
             // 全部或已完成，确保日期不为空
             if (!dateInput.value) {
@@ -191,18 +192,4 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         loadTasks();
     });
-    
-    // 监听输入事件，处理清除后的显示
-    document.getElementById('selDate').addEventListener('input', function() {
-        const status = document.getElementById('statusFilter').value;
-        // 控制占位符显示
-        document.getElementById('datePlaceholder').style.display = this.value ? 'none' : 'block';
-        
-        if (status === 'false' && !this.value) {
-            document.getElementById('taskList').innerHTML = '<p style="color:#666;">已清除日期，显示所有未完成任务</p>';
-        }
-    });
-    
-    // 初始化占位符显示
-    document.getElementById('datePlaceholder').style.display = document.getElementById('selDate').value ? 'none' : 'block';
 });
